@@ -2,8 +2,10 @@
   "compilerOptions": {
     "lib": ["ES2020"],
     "module": "NodeNext",
+    "moduleResolution": "bundler",
     "target": "ES2020",
     "esModuleInterop": true,
+    "noUncheckedIndexedAccess": true,
     "resolveJsonModule": true
   }
 }
