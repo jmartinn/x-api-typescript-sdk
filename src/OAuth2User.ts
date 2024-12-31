@@ -1,30 +1,32 @@
 // Copyright 2021 Twitter, Inc.
 // SPDX-License-Identifier: Apache-2.0
+// Modifications Copyright 2024 Juan Pedro Martin
 
-import crypto from "crypto";
-import { buildQueryString, basicAuthHeader } from "./utils";
-import { AuthClient, AuthHeader } from "./types";
-import { RequestOptions, rest } from "./request";
+import crypto from 'crypto';
+
+import { RequestOptions, rest } from './request';
+import { AuthClient, AuthHeader } from './types';
+import { buildQueryString, basicAuthHeader } from './utils';
 
 export type OAuth2Scopes =
-  | "tweet.read"
-  | "tweet.write"
-  | "tweet.moderate.write"
-  | "users.read"
-  | "follows.read"
-  | "follows.write"
-  | "offline.access"
-  | "space.read"
-  | "mute.read"
-  | "mute.write"
-  | "like.read"
-  | "like.write"
-  | "list.read"
-  | "list.write"
-  | "block.read"
-  | "block.write"
-  | "bookmark.read"
-  | "bookmark.write";
+  | 'tweet.read'
+  | 'tweet.write'
+  | 'tweet.moderate.write'
+  | 'users.read'
+  | 'follows.read'
+  | 'follows.write'
+  | 'offline.access'
+  | 'space.read'
+  | 'mute.read'
+  | 'mute.write'
+  | 'like.read'
+  | 'like.write'
+  | 'list.read'
+  | 'list.write'
+  | 'block.read'
+  | 'block.write'
+  | 'bookmark.read'
+  | 'bookmark.write';
 
 export interface OAuth2UserOptions {
   /** Can be found in the developer portal under the header "Client ID". */
@@ -46,7 +48,7 @@ export type GenerateAuthUrlOptions =
       /** A random string you provide to verify against CSRF attacks.  The length of this string can be up to 500 characters. */
       state: string;
       /** Specifies the method you are using to make a request (S256 OR plain). */
-      code_challenge_method: "s256";
+      code_challenge_method: 's256';
     }
   | {
       /** A random string you provide to verify against CSRF attacks.  The length of this string can be up to 500 characters. */
@@ -54,7 +56,7 @@ export type GenerateAuthUrlOptions =
       /** A PKCE parameter, a random secret for each request you make. */
       code_challenge: string;
       /** Specifies the method you are using to make a request (S256 OR plain). */
-      code_challenge_method?: "plain";
+      code_challenge_method?: 'plain';
     };
 
 export interface RevokeAccessTokenParams {
@@ -64,15 +66,15 @@ export interface RevokeAccessTokenParams {
 }
 
 function sha256(buffer: string) {
-  return crypto.createHash("sha256").update(buffer).digest();
+  return crypto.createHash('sha256').update(buffer).digest();
 }
 
 function base64URLEncode(str: Buffer) {
   return str
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=/g, "");
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
 }
 
 interface RevokeAccessTokenResponse {
@@ -90,7 +92,7 @@ interface GetTokenResponse {
   scope?: string;
 }
 
-interface Token extends Omit<GetTokenResponse, "expires_in"> {
+interface Token extends Omit<GetTokenResponse, 'expires_in'> {
   /** Date that the access_token will expire at.  */
   expires_at?: number;
 }
@@ -126,23 +128,23 @@ export class OAuth2User implements AuthClient {
     const refresh_token = this.token?.refresh_token;
     const { client_id, client_secret, request_options } = this.#options;
     if (!client_id) {
-      throw new Error("client_id is required");
+      throw new Error('client_id is required');
     }
     if (!refresh_token) {
-      throw new Error("refresh_token is required");
+      throw new Error('refresh_token is required');
     }
     const data = await rest<GetTokenResponse>({
       ...request_options,
       endpoint: `/2/oauth2/token`,
       params: {
         client_id,
-        grant_type: "refresh_token",
+        grant_type: 'refresh_token',
         refresh_token,
       },
-      method: "POST",
+      method: 'POST',
       headers: {
         ...request_options?.headers,
-        "Content-type": "application/x-www-form-urlencoded",
+        'Content-type': 'application/x-www-form-urlencoded',
         ...(!!client_secret && {
           Authorization: basicAuthHeader(client_id, client_secret),
         }),
@@ -171,14 +173,14 @@ export class OAuth2User implements AuthClient {
       this.#options;
     const code_verifier = this.#code_verifier;
     if (!client_id) {
-      throw new Error("client_id is required");
+      throw new Error('client_id is required');
     }
     if (!callback) {
-      throw new Error("callback is required");
+      throw new Error('callback is required');
     }
     const params = {
       code,
-      grant_type: "authorization_code",
+      grant_type: 'authorization_code',
       code_verifier,
       client_id,
       redirect_uri: callback,
@@ -187,10 +189,10 @@ export class OAuth2User implements AuthClient {
       ...request_options,
       endpoint: `/2/oauth2/token`,
       params,
-      method: "POST",
+      method: 'POST',
       headers: {
         ...request_options?.headers,
-        "Content-type": "application/x-www-form-urlencoded",
+        'Content-type': 'application/x-www-form-urlencoded',
         ...(!!client_secret && {
           Authorization: basicAuthHeader(client_id, client_secret),
         }),
@@ -209,32 +211,32 @@ export class OAuth2User implements AuthClient {
     const access_token = this.token?.access_token;
     const refresh_token = this.token?.refresh_token;
     if (!client_id) {
-      throw new Error("client_id is required");
+      throw new Error('client_id is required');
     }
     let params: RevokeAccessTokenParams;
-    if (!!access_token) {
+    if (access_token) {
       params = {
-        token_type_hint: "access_token",
+        token_type_hint: 'access_token',
         token: access_token,
         client_id,
       };
-    } else if (!!refresh_token) {
+    } else if (refresh_token) {
       params = {
-        token_type_hint: "refresh_token",
+        token_type_hint: 'refresh_token',
         token: refresh_token,
         client_id,
       };
     } else {
-      throw new Error("access_token or refresh_token required");
+      throw new Error('access_token or refresh_token required');
     }
     return rest({
       ...request_options,
       endpoint: `/2/oauth2/revoke`,
       params,
-      method: "POST",
+      method: 'POST',
       headers: {
         ...request_options?.headers,
-        "Content-Type": "application/x-www-form-urlencoded",
+        'Content-Type': 'application/x-www-form-urlencoded',
         ...(!!client_secret && {
           Authorization: basicAuthHeader(client_id, client_secret),
         }),
@@ -244,9 +246,9 @@ export class OAuth2User implements AuthClient {
 
   generateAuthURL(options: GenerateAuthUrlOptions): string {
     const { client_id, callback, scopes } = this.#options;
-    if (!callback) throw new Error("callback required");
-    if (!scopes) throw new Error("scopes required");
-    if (options.code_challenge_method === "s256") {
+    if (!callback) throw new Error('callback required');
+    if (!scopes) throw new Error('scopes required');
+    if (options.code_challenge_method === 's256') {
       const code_verifier = base64URLEncode(crypto.randomBytes(32));
       this.#code_verifier = code_verifier;
       this.#code_challenge = base64URLEncode(sha256(code_verifier));
@@ -255,21 +257,21 @@ export class OAuth2User implements AuthClient {
       this.#code_verifier = options.code_challenge;
     }
     const code_challenge = this.#code_challenge;
-    const url = new URL("https://twitter.com/i/oauth2/authorize");
+    const url = new URL('https://twitter.com/i/oauth2/authorize');
     url.search = buildQueryString({
       ...options,
       client_id,
-      scope: scopes.join(" "),
-      response_type: "code",
+      scope: scopes.join(' '),
+      response_type: 'code',
       redirect_uri: callback,
-      code_challenge_method: options.code_challenge_method || "plain",
+      code_challenge_method: options.code_challenge_method || 'plain',
       code_challenge,
     });
     return url.toString();
   }
 
   async getAuthHeader(): Promise<AuthHeader> {
-    if (!this.token?.access_token) throw new Error("access_token is required");
+    if (!this.token?.access_token) throw new Error('access_token is required');
     if (this.isAccessTokenExpired()) await this.refreshAccessToken();
     return {
       Authorization: `Bearer ${this.token.access_token}`,

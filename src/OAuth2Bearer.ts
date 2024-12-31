@@ -1,7 +1,8 @@
 // Copyright 2021 Twitter, Inc.
 // SPDX-License-Identifier: Apache-2.0
+// Modifications Copyright 2024 Juan Pedro Martin
 
-import { AuthClient, AuthHeader } from "./types";
+import { AuthClient, AuthHeader } from './types';
 
 export class OAuth2Bearer implements AuthClient {
   private bearer_token: string;

@@ -1,29 +1,31 @@
 // Copyright 2021 Twitter, Inc.
 // SPDX-License-Identifier: Apache-2.0
+// Modifications Copyright 2024 Juan Pedro Martin
 
-import fetch from "node-fetch";
-import type { RequestInfo, RequestInit, Response, Headers } from "node-fetch";
-import { buildQueryString } from "./utils";
+import type { AbortController as AbortControllerPolyfill } from 'abort-controller';
+import fetch from 'node-fetch';
+import type { RequestInfo, RequestInit, Response, Headers } from 'node-fetch';
+
 import {
   AuthClient,
   TwitterNextToken,
   TwitterPaginatedResponse,
-} from "./types";
-import type { AbortController as AbortControllerPolyfill } from "abort-controller";
+} from './types';
+import { buildQueryString } from './utils';
 
 let AbortController:
   | typeof globalThis.AbortController
   | typeof AbortControllerPolyfill;
 
 if (!globalThis.AbortController) {
-  AbortController = require("abort-controller");
+  AbortController = require('abort-controller');
 } else {
   // https://nodejs.org/api/globals.html#class-abortcontroller
   // AbortController available in v14.17.0 as experimental
   AbortController = globalThis.AbortController;
 }
 
-export interface RequestOptions extends Omit<RequestInit, "body"> {
+export interface RequestOptions extends Omit<RequestInit, 'body'> {
   auth?: AuthClient;
   endpoint: string;
   params?: Record<string, any>;
@@ -40,13 +42,14 @@ async function fetchWithRetries(
 ): Promise<Response> {
   const res = await fetch(url, init);
   if (res.status === 429 && max_retries > 0) {
-    const rateLimitReset = Number(res.headers.get("x-rate-limit-reset"));
-    const rateLimitRemaining = Number(res.headers.get("x-rate-limit-remaining"));
+    const rateLimitReset = Number(res.headers.get('x-rate-limit-reset'));
+    const rateLimitRemaining = Number(
+      res.headers.get('x-rate-limit-remaining')
+    );
     const timeTillReset = rateLimitReset * 1000 - Date.now();
     let timeToWait = 1000;
-    if (rateLimitRemaining === 0)
-      timeToWait = timeTillReset;
-    await new Promise((resolve) => setTimeout(resolve, timeToWait));
+    if (rateLimitRemaining === 0) timeToWait = timeTillReset;
+    await new Promise(resolve => setTimeout(resolve, timeToWait));
     return fetchWithRetries(url, init, max_retries - 1);
   }
   return res;
@@ -78,13 +81,13 @@ export async function request({
   request_body,
   method,
   max_retries,
-  base_url = "https://api.twitter.com",
+  base_url = 'https://api.twitter.com',
   headers,
   ...options
 }: RequestOptions): Promise<Response> {
   const url = new URL(base_url + endpoint);
   url.search = buildQueryString(query);
-  const includeBody = (method === "POST" || method === "PUT") && !!request_body;
+  const includeBody = (method === 'POST' || method === 'PUT') && !!request_body;
   const authHeader = auth
     ? await auth.getAuthHeader(url.href, method)
     : undefined;
@@ -93,7 +96,7 @@ export async function request({
     {
       headers: {
         ...(includeBody
-          ? { "Content-Type": "application/json; charset=utf-8" }
+          ? { 'Content-Type': 'application/json; charset=utf-8' }
           : undefined),
         ...authHeader,
         ...headers,
@@ -122,15 +125,15 @@ export async function request({
 export async function* stream<T>(args: RequestOptions): AsyncGenerator<T> {
   const controller = new AbortController();
   const { body } = await request({
-    signal: controller.signal as RequestInit["signal"],
+    signal: controller.signal as RequestInit['signal'],
     ...args,
   });
-  if (body === null) throw new Error("No response returned from stream");
-  let buf = "";
+  if (body === null) throw new Error('No response returned from stream');
+  let buf = '';
   try {
     for await (const chunk of body) {
       buf += chunk.toString();
-      const lines = buf.split("\r\n");
+      const lines = buf.split('\r\n');
       for (const [i, line] of lines.entries()) {
         if (i === lines.length - 1) {
           buf = line;

@@ -1,8 +1,9 @@
 // Copyright 2021 Twitter, Inc.
 // SPDX-License-Identifier: Apache-2.0
+// Modifications Copyright 2024 Juan Pedro Martin
 
 export type SuccessStatus = 200 | 201;
-export type ResponseType = "application/json";
+export type ResponseType = 'application/json';
 
 export interface AuthHeader {
   Authorization: string;
@@ -39,34 +40,34 @@ export type GetSuccess<T> = {
 
 export type TwitterResponse<T> = UnionToIntersection<ExtractTwitterResponse<T>>;
 
-export type GetContent<T> = "content" extends keyof T
-  ? ResponseType extends keyof T["content"]
-    ? T["content"][ResponseType]
+export type GetContent<T> = 'content' extends keyof T
+  ? ResponseType extends keyof T['content']
+    ? T['content'][ResponseType]
     : never
   : never;
 
-export type ExtractTwitterResponse<T> = "responses" extends keyof T
-  ? GetSuccess<T["responses"]>
+export type ExtractTwitterResponse<T> = 'responses' extends keyof T
+  ? GetSuccess<T['responses']>
   : never;
 
-export type TwitterParams<T> = "parameters" extends keyof T
-  ? "query" extends keyof T["parameters"]
-    ? T["parameters"]["query"]
+export type TwitterParams<T> = 'parameters' extends keyof T
+  ? 'query' extends keyof T['parameters']
+    ? T['parameters']['query']
     : never
   : never;
 
-export type TwitterPath<T> = "parameters" extends keyof T
-  ? "path" extends keyof T["parameters"]
-    ? T["parameters"]["path"]
+export type TwitterPath<T> = 'parameters' extends keyof T
+  ? 'path' extends keyof T['parameters']
+    ? T['parameters']['path']
     : never
   : never;
 
-export type TwitterBody<T> = "requestBody" extends keyof T
-  ? "content" extends keyof T["requestBody"]
-    ? ResponseType extends keyof T["requestBody"]["content"]
-      ? T["requestBody"]["content"][ResponseType]
+export type TwitterBody<T> = 'requestBody' extends keyof T
+  ? 'content' extends keyof T['requestBody']
+    ? ResponseType extends keyof T['requestBody']['content']
+      ? T['requestBody']['content'][ResponseType]
       : never
     : never
   : never;
 
-export * from "./gen/openapi-types";
+export * from './gen/openapi-types';
