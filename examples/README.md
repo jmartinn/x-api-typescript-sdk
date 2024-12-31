@@ -1,4 +1,4 @@
-# Twitter API TypeScript SDK Examples
+# X API TypeScript SDK Examples
 
 ## To run the examples
 
@@ -7,7 +7,7 @@ Make sure you are in the `examples` directory
 Install the required packages
 
 ```
-npm install
+pnpm install
 ```
 
 Next, create a `.env` file in the example directory and populate the following variables (You do not need them all for each example, for example `oauth2-bearer.ts` only requires a `BEARER_TOKEN`):
@@ -25,5 +25,5 @@ Run the example with `ts-node`
 For example:
 
 ```
-npx ts-node oauth2-bearer.ts
+pnpm ts-node oauth2-bearer.ts
 ```

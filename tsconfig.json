@@ -1,12 +1,19 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
+    "module": "ESNext",
+    "target": "ES2022",
     "strict": true,
-    "target": "ES2020",
     "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
     "esModuleInterop": true,
-    "outDir": "./dist"
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "outDir": "./build"
   },
   "include": ["src/**/*"],
-  "exclude": ["examples/*", "scripts/*"]
+  "exclude": ["build", "node_modules", "examples/*", "scripts/*"]
 }

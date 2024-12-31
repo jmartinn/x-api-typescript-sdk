@@ -1,6 +1,12 @@
 // Copyright 2022 Twitter, Inc.
 // SPDX-License-Identifier: Apache-2.0
+// Modifications Copyright 2024 Juan Pedro Martin
 
+import { promises as fs } from 'fs';
+import path from 'path';
+
+import $RefParser from '@apidevtools/json-schema-ref-parser';
+import fetch from 'node-fetch';
 import type {
   OpenAPI3,
   OperationObject,
@@ -10,32 +16,35 @@ import type {
   ResponseObject,
   SchemaObject,
   // https://github.com/microsoft/TypeScript/issues/49721
-  // @ts-expect-error
-} from "openapi-typescript";
-import { promises as fs } from "fs";
-import prettier from "prettier";
-import fetch from "node-fetch";
-import path from "path";
-import $RefParser from "@apidevtools/json-schema-ref-parser";
+} from 'openapi-typescript';
+import prettier from 'prettier';
 
 const LICENCE = `// Copyright 2021 Twitter, Inc.
 // SPDX-License-Identifier: Apache-2.0`;
 
 function exportTypes(operationIds: string[]) {
-  let output = "";
-  operationIds.forEach((x) => {
+  let output = '';
+  operationIds.forEach(x => {
     output += `export type ${x} = operations['${x}']\n`;
   });
   return output;
 }
 
 function importTypes(operationIds: string[]) {
-  let output = "import {";
-  operationIds.forEach((x) => {
+  let output = 'import {';
+  operationIds.forEach(x => {
     output += `${x},\n`;
   });
   output += '} from "./openapi-types"';
   return output;
+}
+
+function convertTag(tag: string) {
+  const [fst, ...rest] = tag.toLowerCase().split(' ');
+  return (
+    fst.toLowerCase() +
+    rest.map(x => x.charAt(0).toUpperCase() + x.slice(1)).join('')
+  );
 }
 
 function functionDocs(
@@ -46,9 +55,9 @@ function functionDocs(
   pathQueryVariables?: ParameterObject[],
   requestBody?: RequestBody
 ) {
-  let output = "";
+  let output = '';
   output += `\n/**\n    * ${summary}\n    *\n\n    * ${description}\n`;
-  pathVariables?.forEach((x) => {
+  pathVariables?.forEach(x => {
     output += `    * @param ${x.name} - ${x.description}\n`;
   });
   if (pathQueryVariables?.length)
@@ -56,7 +65,7 @@ function functionDocs(
   if (requestBody)
     output += `    * @param request_body - The request_body for ${operationId}\n`;
   output += `    * @param request_options - Customize the options for this request\n`;
-  output += "    */\n";
+  output += '    */\n';
   return output;
 }
 
@@ -70,62 +79,58 @@ function functionParameters(
   responseBody: SchemaObject | undefined,
   isStreaming: boolean
 ) {
-  let output = "";
+  let output = '';
   const args = pathVariables
-    ?.map((x) => `${x.name}${x.required === false ? "?" : ""}: string`)
-    .join(",");
+    ?.map(x => `${x.name}${x.required === false ? '?' : ''}: string`)
+    .join(',');
   const responseType = `TwitterResponse<${operationId}>`;
   const needsPathQuery = pathQueryVariables && pathQueryVariables.length > 0;
   const needsRequestBody = !!requestBody;
-  const pathQueryRequired = pathQueryVariables?.some(
-    (x) => x.required === true
-  );
+  const pathQueryRequired = pathQueryVariables?.some(x => x.required === true);
   let requestBodyRequired = false;
-  if (requestBody?.content && requestBody.content["application/json"]?.schema) {
-    const schema = requestBody.content["application/json"]
+  if (requestBody?.content && requestBody.content['application/json']?.schema) {
+    const schema = requestBody.content['application/json']
       .schema as SchemaObject;
     requestBodyRequired =
       !requestBody.required ||
       requestBody.required === true ||
       (!!schema.properties &&
-        Object.keys(schema.properties).some((x) =>
-          schema.required?.includes(x)
-        ));
+        Object.keys(schema.properties).some(x => schema.required?.includes(x)));
   }
   const isPaginated =
     pathQueryVariables?.some(
-      (x) => (x as ParameterObject).name === "pagination_token"
+      x => (x as ParameterObject).name === 'pagination_token'
     ) &&
     !!(responseBody?.properties?.meta as SchemaObject | undefined)?.properties
       ?.next_token;
-  const type = isPaginated ? "paginate" : isStreaming ? "stream" : "rest";
+  const type = isPaginated ? 'paginate' : isStreaming ? 'stream' : 'rest';
   const optionalParams = needsPathQuery && !pathQueryRequired;
   const optionalRequestBody = !requestBodyRequired;
   output += `${operationId}: (`;
   if (args) output += `${args}, `;
   if (needsRequestBody && needsPathQuery) {
     output += `request_body: TwitterBody<${operationId}>`;
-    if (optionalRequestBody) output += "= {}";
-    output += ",";
+    if (optionalRequestBody) output += '= {}';
+    output += ',';
     // Add request body inline to stop generating inlined types
     output += `params: TwitterParams<${operationId}>`;
-    if (optionalParams) output += "= {}";
-    output += ",";
+    if (optionalParams) output += '= {}';
+    output += ',';
   } else if (needsRequestBody && !needsPathQuery) {
     output += `request_body: TwitterBody<${operationId}>`;
-    if (optionalRequestBody) output += "= {}";
-    output += ",";
+    if (optionalRequestBody) output += '= {}';
+    output += ',';
   } else if (!needsRequestBody && needsPathQuery) {
     output += `params: TwitterParams<${operationId}>`;
-    if (optionalParams) output += "= {}";
-    output += ",";
+    if (optionalParams) output += '= {}';
+    output += ',';
   }
-  output += "request_options?: Partial<RequestOptions>): ";
+  output += 'request_options?: Partial<RequestOptions>): ';
   switch (type) {
-    case "paginate":
+    case 'paginate':
       output += `TwitterPaginatedResponse<TwitterResponse<${operationId}>>`;
       break;
-    case "stream":
+    case 'stream':
       output += `AsyncGenerator<TwitterResponse<${operationId}>>`;
       break;
     default:
@@ -134,10 +139,10 @@ function functionParameters(
   output += ` => `;
   output += `${type}<${responseType}>({ auth: this.#auth, ...this.#defaultRequestOptions, ...request_options, endpoint: \`${pathKey.replace(
     /{/g,
-    "${"
+    '${'
   )}\``;
-  if (needsPathQuery) output += ",params";
-  if (needsRequestBody) output += ",request_body";
+  if (needsPathQuery) output += ',params';
+  if (needsRequestBody) output += ',request_body';
   output += `,method: '${method.toUpperCase()}'})\n`;
   return output;
 }
@@ -150,15 +155,15 @@ function buildClasses(classes: {
     functions: string[];
   };
 }) {
-  let output = "";
-  Object.keys(classes).forEach((x) => {
+  let output = '';
+  Object.keys(classes).forEach(x => {
     const { name, description, externalDocs, functions } = classes[x];
     if (functions.length < 1) return;
     if (name && description && externalDocs) {
       output += `\n/**\n* ${name}\n*\n* ${description}\n*\n* ${externalDocs.description}\n* ${externalDocs.url}\n*/\n`;
     }
-    output += `public readonly ${x} = {
-      ${functions.join("\n,")}
+    output += `public readonly ${x.split(' ').join('_')} = {
+      ${functions.join('\n,')}
     };`;
   });
   return output;
@@ -166,7 +171,7 @@ function buildClasses(classes: {
 
 export async function generate(): Promise<void> {
   const version = process.argv[2];
-  const specFileIndex = process.argv.indexOf("--specFile");
+  const specFileIndex = process.argv.indexOf('--specFile');
   let specFilePath: string;
   if (specFileIndex > -1) specFilePath = process.argv[specFileIndex + 1];
   let spec: OpenAPI3 & {
@@ -176,24 +181,24 @@ export async function generate(): Promise<void> {
   };
   if (specFilePath) {
     spec = await fs
-      .readFile(path.resolve(__dirname, specFilePath), "utf8")
+      .readFile(path.resolve(__dirname, specFilePath), 'utf8')
       .then(JSON.parse);
   } else {
-    spec = await fetch("https://api.twitter.com/2/openapi.json").then((x) =>
+    spec = await fetch('https://api.twitter.com/2/openapi.json').then(x =>
       x.json()
     );
   }
-  const openApiTs = (await import("openapi-typescript")).default;
+  const openApiTs = (await import('openapi-typescript')).default;
   let openApiTypes = await openApiTs(spec);
 
-  openApiTypes = LICENCE + "\n\n" + openApiTypes;
+  openApiTypes = LICENCE + '\n\n' + openApiTypes;
 
   await $RefParser.dereference(spec);
 
   const { paths, tags } = spec;
 
   const classes = tags.reduce((prev: any, next: { name: string }) => {
-    const name = next.name.toLowerCase();
+    const name = convertTag(next.name);
     return {
       ...prev,
       [name]: { functions: [], ...next },
@@ -215,9 +220,9 @@ import { OAuth2Bearer } from "../auth";\n\n`;
 
   if (!paths) return;
 
-  Object.keys(paths).forEach((pathKey) => {
+  Object.keys(paths).forEach(pathKey => {
     const endpointPath = paths[pathKey];
-    Object.keys(endpointPath).forEach((methodKey) => {
+    Object.keys(endpointPath).forEach(methodKey => {
       const method = endpointPath[
         methodKey as keyof PathItemObject
       ] as OperationObject & Record<string, any>;
@@ -231,31 +236,31 @@ import { OAuth2Bearer } from "../auth";\n\n`;
         tags,
       } = method;
 
-      if (!operationId) return new Error("No operation id");
+      if (!operationId) return new Error('No operation id');
 
       const queryVariables = parameters?.filter(
-        (x) => "in" in x && x.in === "query"
+        x => 'in' in x && x.in === 'query'
       ) as ParameterObject[];
 
       const pathVariables = parameters?.filter(
-        (x) => "in" in x && x.in === "path"
+        x => 'in' in x && x.in === 'path'
       ) as ParameterObject[];
 
-      const okResponse = responses["200"] as ResponseObject | undefined;
+      const okResponse = responses['200'] as ResponseObject | undefined;
       const responseBody = (
         responses
           ? okResponse?.content
-            ? okResponse.content["application/json"].schema
+            ? okResponse.content['application/json'].schema
             : undefined
           : undefined
       ) as ResponseObject;
-      const isStreaming = method["x-twitter-streaming"] === true;
+      const isStreaming = method['x-twitter-streaming'] === true;
 
       operationIds.push(operationId);
 
-      if (!tags?.length) throw "No tags found";
-      const tag = tags[0].toLowerCase();
-      classes[tag].functions.push(
+      if (!tags?.length) throw 'No tags found';
+      const tag = convertTag(tags[0]);
+      classes[tag]?.functions.push(
         functionDocs(
           summary,
           description,
@@ -307,12 +312,12 @@ export class Client {
 }`;
   await Promise.all([
     fs.writeFile(
-      path.resolve(__dirname, "../src/gen/", "openapi-types.ts"),
+      path.resolve(__dirname, '../src/gen/', 'openapi-types.ts'),
       openApiTypes
     ),
     fs.writeFile(
-      path.resolve(__dirname, "../src/gen/", "Client.ts"),
-      prettier.format(output, { parser: "typescript" })
+      path.resolve(__dirname, '../src/gen/', 'Client.ts'),
+      await prettier.format(output, { parser: 'typescript' })
     ),
   ]);
 }
