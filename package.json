@@ -1,6 +1,6 @@
 {
   "name": "x-api-sdk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A TypeScript SDK for the X API",
   "keywords": [
     "typescript",
@@ -18,7 +18,6 @@
     "type": "git",
     "url": "git+https://github.com/jmartinn/x-api-typescript-sdk.git"
   },
-  "type": "module",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "files": [
